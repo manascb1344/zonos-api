@@ -231,6 +231,7 @@ def test_openai_speech_pcm():
 def test_openai_speech_mp3_uses_ffmpeg():
     with (
         patch("app.main.get_tts_service") as mock_get_service,
+        patch("app.openai_api.shutil.which", return_value="/usr/bin/ffmpeg"),
         patch("app.openai_api.subprocess.run") as mock_run,
     ):
         mock_service = Mock(spec=TTSService)
