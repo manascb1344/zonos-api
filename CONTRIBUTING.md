@@ -6,7 +6,7 @@ We welcome bug reports, feature ideas, fixes, and new maintainers.
 
 This API imports the `zonos` package from a separate repository. This project has no git submodule.
 
-1. Clone Zonos next to this repository.
+1. Clone Zonos into the root of this repository.
 ```bash
 git clone https://github.com/Zyphra/Zonos.git
 ```

@@ -171,6 +171,10 @@ def test_openai_models_retrieve():
         assert response.status_code == 200
         assert response.json()["id"] == "tts-1"
 
+        full_id = client.get(f"/v1/models/{MODEL}")
+        assert full_id.status_code == 200
+        assert full_id.json()["id"] == MODEL
+
         missing = client.get("/v1/models/unknown-model")
         assert missing.status_code == 404
         assert missing.json()["error"]["type"] == "invalid_request_error"
@@ -220,7 +224,8 @@ def test_openai_speech_pcm():
         )
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("audio/pcm")
-        assert len(response.content) == 200
+        assert len(response.content) % 2 == 0
+        assert abs(len(response.content) - 108) <= 2
 
 
 def test_openai_speech_mp3_uses_ffmpeg():
@@ -249,6 +254,22 @@ def test_openai_speech_mp3_uses_ffmpeg():
         assert response.headers["content-type"].startswith("audio/mpeg")
         assert response.content == b"mp3bytes"
         assert "libmp3lame" in mock_run.call_args.args[0]
+
+
+def test_openai_validation_errors_use_error_envelope():
+    with patch("app.main.get_tts_service") as mock_get_service:
+        mock_service = Mock(spec=TTSService)
+        mock_service.get_model_names.return_value = [MODEL]
+        mock_get_service.return_value = mock_service
+
+        missing_input = client.post("/v1/audio/speech", json={"model": "tts-1"})
+        assert missing_input.status_code == 422
+        assert missing_input.json()["error"]["type"] == "invalid_request_error"
+        assert missing_input.json()["error"]["param"] == "input"
+
+        legacy = client.post("/synthesize", json={"model_choice": MODEL})
+        assert legacy.status_code == 422
+        assert "detail" in legacy.json()
 
 
 def test_openai_speech_validation():

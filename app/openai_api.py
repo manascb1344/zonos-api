@@ -1,10 +1,13 @@
 import io
 import logging
+import shutil
 import subprocess
 import wave
 from typing import Callable, Optional
 
 import numpy as np
+import torch
+import torchaudio
 from fastapi import APIRouter
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -33,13 +36,21 @@ FFMPEG_CODECS = {
     "flac": "flac",
 }
 DEFAULT_SPEAKING_RATE = 15.0
+PCM_SAMPLE_RATE = 24000
 
 
 def encode_audio(audio_data, sample_rate: int, response_format: str) -> bytes:
     """Encode mono float audio into an OpenAI response format."""
-    pcm = (audio_data * 32767).astype(np.int16).tobytes()
     if response_format == "pcm":
-        return pcm
+        if sample_rate != PCM_SAMPLE_RATE:
+            waveform = torch.as_tensor(audio_data, dtype=torch.float32).unsqueeze(0)
+            waveform = torchaudio.functional.resample(
+                waveform, sample_rate, PCM_SAMPLE_RATE
+            )
+            audio_data = waveform.squeeze(0).numpy()
+        return (audio_data * 32767).astype("<i2").tobytes()
+
+    pcm = (audio_data * 32767).astype("<i2").tobytes()
 
     wav_buffer = io.BytesIO()
     with wave.open(wav_buffer, "wb") as wav_file:
@@ -51,10 +62,16 @@ def encode_audio(audio_data, sample_rate: int, response_format: str) -> bytes:
     if response_format == "wav":
         return wav_bytes
 
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path is None:
+        raise OpenAIError(
+            500, "Audio encoding is unavailable", error_type="server_error"
+        )
+
     try:
         result = subprocess.run(
             [
-                "ffmpeg",
+                ffmpeg_path,
                 "-v",
                 "error",
                 "-f",
@@ -129,7 +146,7 @@ def create_router(get_service: Callable):
         ids = list(service.get_model_names()) + list(OPENAI_MODEL_ALIASES)
         return ModelList(data=[ModelObject(id=model_id) for model_id in ids])
 
-    @router.get("/models/{model_id}", response_model=ModelObject)
+    @router.get("/models/{model_id:path}", response_model=ModelObject)
     def retrieve_model(model_id: str):
         service = get_service()
         if (

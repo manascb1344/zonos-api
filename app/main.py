@@ -7,6 +7,8 @@ from typing import Optional
 
 import numpy as np
 from fastapi import FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .config import LOG_LEVEL, MAX_CHARACTERS
@@ -48,6 +50,26 @@ def get_tts_service() -> TTSService:
 @app.exception_handler(OpenAIError)
 async def openai_error_handler(request, exc: OpenAIError):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.payload})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc: RequestValidationError):
+    errors = jsonable_encoder(exc.errors())
+    if request.url.path.startswith("/v1"):
+        first = errors[0] if errors else {}
+        location = first.get("loc", [])
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "message": first.get("msg", "Invalid request"),
+                    "type": "invalid_request_error",
+                    "param": str(location[-1]) if location else None,
+                    "code": None,
+                }
+            },
+        )
+    return JSONResponse(status_code=422, content={"detail": errors})
 
 
 app.include_router(create_router(lambda: get_tts_service()))
