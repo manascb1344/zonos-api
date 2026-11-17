@@ -1,119 +1,84 @@
 # Contributing to Zonos API
 
-We love your input! We want to make contributing to Zonos API as easy and transparent as possible, whether it's:
+We welcome bug reports, feature ideas, fixes, and new maintainers.
 
-- Reporting a bug
-- Discussing the current state of the code
-- Submitting a fix
-- Proposing new features
-- Becoming a maintainer
+## Zonos model repository
 
-## Git Submodules
+This API imports the `zonos` package from a separate repository. This project has no git submodule.
 
-This project uses git submodules to manage the Zonos model repository. When working with the codebase:
-
-1. Clone with submodules:
+1. Clone Zonos into the root of this repository.
 ```bash
-git clone --recursive https://github.com/manascb1344/zonos-api
+git clone https://github.com/Zyphra/Zonos.git
 ```
 
-2. If you forgot --recursive:
+2. Install it in editable mode from the repository root.
 ```bash
-git submodule update --init --recursive
+pip install -e Zonos
 ```
 
-3. Update submodules to latest:
-```bash
-git submodule update --remote
-```
-
-4. When making changes that require a specific version of Zonos:
+3. Update Zonos when you need a newer version.
 ```bash
 cd Zonos
-git checkout <specific-commit>
+git pull
 cd ..
-git add Zonos
-git commit -m "chore: update Zonos submodule to <version>"
 ```
+Record the commit you tested against in the pull request description when the change depends on a specific Zonos version.
 
-## Development Process
+## Development process
 
-1. Clone the repository and set up your environment:
+1. Clone this repository and set up the environment.
 ```bash
-# Clone the repo with submodules
-git clone --recursive https://github.com/manascb1344/zonos-api
+git clone https://github.com/manascb1344/zonos-api
 cd zonos-api
-
-# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Install Zonos from submodule
-cd Zonos
+git clone https://github.com/Zyphra/Zonos.git
+pip install -e Zonos
 pip install -e .
-cd ..
+```
 
-# Install GPU optimizations
-pip install --no-build-isolation -e .[compile]
-
-2. Create a new branch:
+2. Create a branch.
 ```bash
 git checkout -b feature/your-feature-name
 ```
 
-3. Make your changes and run the application:
+3. Make your changes and run the application.
 ```bash
-# Run the application locally
 uvicorn app.main:app --reload
 ```
 
-4. Update documentation:
-- Update docstrings for any modified functions
-- Update README.md if adding new features
-- Update CHANGELOG.md following the format
-- Update API documentation if endpoints change
-
-5. Commit your changes:
+4. Run the tests.
 ```bash
-git add .
-git commit -m "feat: your detailed commit message"
+pytest
 ```
 
-We follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages:
-- `feat:` for new features
-- `fix:` for bug fixes
-- `docs:` for documentation changes
-- `chore:` for maintenance tasks
-- `refactor:` for code refactoring
+5. Update the documentation.
+- Update docstrings for changed functions.
+- Update `README.md` when endpoints or request fields change.
+- Update API documentation when routes change.
 
-## Docker Development
+6. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/).
+- `feat:` new features
+- `fix:` bug fixes
+- `docs:` documentation changes
+- `chore:` maintenance tasks
+- `refactor:` code changes that preserve behavior
 
-For development with Docker:
+## Docker development
 
 ```bash
-# Build and run with docker-compose
 docker-compose up --build
-
-# Check logs
-docker-compose logs -f api
+docker-compose logs -f zonos
 ```
 
-## Monitoring and Debugging
+## Pull request process
 
-The application includes Prometheus metrics and Grafana dashboards:
-
-1. Access metrics at: http://localhost:8000/metrics
-2. View Prometheus: http://localhost:9090
-3. Access Grafana: http://localhost:3000 (admin/admin)
-
-## Pull Request Process
-
-1. Fork the repo and create your branch from `main`
-2. Update the documentation
-3. Update the CHANGELOG.md
-4. Issue that pull request!
+1. Fork the repository and create your branch from `main`.
+2. Update the documentation.
+3. Describe what you tested and the Zonos commit you used.
+4. Open the pull request.
 
 ## License
-By contributing, you agree that your contributions will be licensed under its Apache 2.0 License. 
+
+By contributing, you agree that your contributions are licensed under the Apache 2.0 License.

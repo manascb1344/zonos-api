@@ -1,4 +1,0 @@
-[submodule "Zonos"]
-    path = Zonos
-    url = https://github.com/Zyphra/Zonos.git
-    branch = main 

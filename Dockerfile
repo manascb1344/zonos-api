@@ -1,11 +1,10 @@
-FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-devel
+FROM pytorch/pytorch:2.5.1-cuda12.1-cudnn9-runtime
 
 LABEL org.opencontainers.image.source=https://github.com/manascb1344/zonos-api
 LABEL org.opencontainers.image.description="Zonos API with GPU support"
-LABEL org.opencontainers.image.licenses=MIT
+LABEL org.opencontainers.image.licenses=Apache-2.0
 
-# Set Zonos working directory
-WORKDIR /app/zonos
+WORKDIR /app
 
 # System packages
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -22,51 +21,30 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip3 install --no-cache-dir uv
 
-# Clone Zonos directly into working directory
-RUN git clone --depth 1 https://github.com/Zyphra/Zonos.git . \
-    && git submodule update --init --recursive
+# Clone Zonos into /app/Zonos and leave its own pyproject.toml intact
+RUN git clone --depth 1 https://github.com/Zyphra/Zonos.git /app/Zonos
 
-# Copy dependency specs and application code
-COPY requirements.txt pyproject.toml ./
-COPY app/ app/
-
-# Install basic Python dependencies first
-RUN --mount=type=cache,target=/root/.cache/pip \
-    uv pip install --system -r requirements.txt -e .[compile]
-
-# Install Flash Attention with specific compiler flags
-ENV TORCH_CUDA_ARCH_LIST="7.0;7.5;8.0;8.6+PTX"
-ENV FLASH_ATTENTION_FORCE_BUILD=1
-RUN --mount=type=cache,target=/root/.cache/pip \
-    uv pip install --system --no-build-isolation \
-    git+https://github.com/Dao-AILab/flash-attention.git@v2.5.6
-
-# Install remaining ML dependencies
-RUN --mount=type=cache,target=/root/.cache/pip \
-    uv pip install --system --no-build-isolation \
-    mamba-ssm==2.2.4 \
-    causal-conv1d==1.5.0.post8
+# Copy dependency specs, README for hatchling metadata, and application code
+COPY requirements.txt pyproject.toml README.md /app/
+COPY app/ /app/app/
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    uv pip install --system \
-    kanjize>=1.5.0 \
-    inflect>=7.5.0 \
-    && rm -rf /root/.cache/pip/*
+    uv pip install --system -r /app/requirements.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    uv pip install --system \
-    phonemizer>=3.3.0 \
-    sudachidict-full>=20241021 \
-    sudachipy>=0.6.10 \
-    && rm -rf /root/.cache/pip/*
+    uv pip install --system --no-deps -e /app
 
-# Copy application code last
-COPY app/ app/
+RUN useradd --create-home --shell /usr/sbin/nologin appuser \
+    && mkdir -p /app/audio /app/.cache/huggingface \
+    && chown -R appuser:appuser /app
 
-# Environment variables
-ENV PYTHONPATH=/app:/app/zonos \
-    USE_GPU=true \
+USER appuser
+
+ENV PYTHONPATH=/app:/app/Zonos \
+    HF_HOME=/app/.cache/huggingface \
     PYTHONUNBUFFERED=1
 
-# Run the application
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
