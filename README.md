@@ -1,71 +1,63 @@
 # Zonos API
 
-> ⚠️ **WARNING: UNSTABLE API - INITIAL RELEASE** ⚠️
-> 
-> This API is currently in its initial release phase (v1.0.0) and is considered unstable.
-> Breaking changes may occur without notice. Use in production at your own risk.
-> For development and testing purposes only.
+> Warning: this API is at version 0.1.0 and is unstable. Breaking changes may occur. Use it in production at your own risk.
 
-A production-grade FastAPI implementation of the Zonos Text-to-Speech model.
+A FastAPI service for the Zonos text-to-speech model.
 
 ## Credits
 
-This API is built on top of the [Zonos-v0.1-hybrid](https://huggingface.co/Zyphra/Zonos-v0.1-hybrid) and [Zonos-v0.1-transformer](https://huggingface.co/Zyphra/Zonos-v0.1-transformer) models created by [Zyphra](https://huggingface.co/Zyphra). The models feature:
-
-- Zero-shot TTS with voice cloning capabilities
-- Support for multiple languages (100+ languages via eSpeak-ng)
-- High-quality 44kHz audio output
-- Fine-grained control over speaking rate, pitch, audio quality, and emotions
-- Real-time performance (~2x real-time on RTX 4090)
-
-For more information, visit the model cards on Hugging Face: [Hybrid](https://huggingface.co/Zyphra/Zonos-v0.1-hybrid) | [Transformer](https://huggingface.co/Zyphra/Zonos-v0.1-transformer).
+This API uses [Zonos-v0.1-hybrid](https://huggingface.co/Zyphra/Zonos-v0.1-hybrid) and [Zonos-v0.1-transformer](https://huggingface.co/Zyphra/Zonos-v0.1-transformer) models created by [Zyphra](https://huggingface.co/Zyphra). The models provide zero-shot voice cloning, more than 100 languages through eSpeak NG, 44 kHz audio output, and control over speaking rate, pitch, and emotion. This API currently serves the transformer variant. See the [model collection](https://huggingface.co/collections/Zyphra/zonos-v01-67ac661c85e1898670823b4f) and the [release blog post](https://www.zyphra.com/post/beta-release-of-zonos-v0-1) for details.
 
 ## Features
 
-- FastAPI-based REST API for Zonos Text-to-Speech model
-- Support for both Transformer and Hybrid model variants
+- FastAPI REST API for the Zonos transformer model
 - Docker and docker-compose support with NVIDIA GPU acceleration
-- Production-ready with Gunicorn workers and optimizations
-- Prometheus and Grafana monitoring integration
-- Health checks and comprehensive logging
-- CORS support and Swagger documentation
-- Voice cloning and audio continuation support
-- Fine-grained emotion and audio quality control
+- Health check and structured logging
+- Swagger documentation at `/docs`
+- Voice cloning and audio continuation through `speaker_audio` and `prefix_audio`
+- OpenAI-compatible `POST /v1/audio/speech` and model listing endpoints
 
 ## Quick Start
 
-### Using Pre-built Image
+Use the published image.
 
-The fastest way to get started is using our pre-built Docker image:
 ```bash
-docker pull ghcr.io/manascb1344/zonos-api-gpu:v1.0.0
+docker pull ghcr.io/manascb1344/zonos-api:latest
 docker run -d \
-  --name zonos-api-gpu \
+  --name zonos-api \
   --gpus all \
   -p 8000:8000 \
   -e CUDA_VISIBLE_DEVICES=0 \
-  zonos-api-gpu
+  ghcr.io/manascb1344/zonos-api:latest
 ```
 
-### Manual Installation
+## Manual Installation
 
-1. Clone the repository with submodules:
+Clone this repository and the Zonos model repository, then install both.
+
 ```bash
-git clone --recursive https://github.com/manascb1344/zonos-api
+git clone https://github.com/manascb1344/zonos-api
 cd zonos-api
+git clone https://github.com/Zyphra/Zonos.git
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -e Zonos
+pip install -e .
 ```
 
-The API will be available at `http://localhost:8000`
+Start the server.
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
 
 ## Running with Docker
 
-1. Build the container:
+Build and run the image locally.
+
 ```bash
 docker build -t zonos-api .
-```
-
-2. Run the container:
-```bash
 docker run -d \
   --name zonos-api \
   --gpus all \
@@ -74,40 +66,63 @@ docker run -d \
   zonos-api
 ```
 
+Or use docker-compose.
+
+```bash
+docker-compose up --build
+```
+
 ## Environment Variables
 
-- `CUDA_VISIBLE_DEVICES`: Specify which GPU(s) to use (default: 0)
-- `USE_GPU`: Enable/disable GPU usage (default: true)
+- `CUDA_VISIBLE_DEVICES`: GPU selection (default: 0)
+- `PYTHONPATH`: set to `/app:/app/Zonos` inside the container
+- `TTS_DEVICE`: torch device for inference (default: cuda)
+- `LOG_LEVEL`: Python log level (default: INFO)
+- `MAX_CHARACTERS`: maximum input length (default: 2000)
+- `AUDIO_ROOT`: directory that `speaker_audio` and `prefix_audio` paths must stay inside (default: /app/audio)
+- `HF_HOME`: Hugging Face cache directory (default: /app/.cache/huggingface in the container)
 
 ## Requirements
 
-- Docker with NVIDIA Container Toolkit installed
+- Docker with NVIDIA Container Toolkit
 - NVIDIA GPU with CUDA support
-- At least 8GB of GPU memory recommended
+- At least 8 GB of GPU memory
 
 ## Verifying the Installation
 
-Check if the API is running:
 ```bash
 curl http://localhost:8000/health
 ```
 
+The response is `{"status":"ok"}`.
+
 ## API Endpoints
 
-### GET /
-Root endpoint that returns basic API information
+- `GET /`: basic API information
+- `GET /health`: liveness check that does not load the model
+- `GET /models`: available TTS models
+- `GET /languages`: supported language codes
+- `GET /model/{model_name}/conditioners`: conditioners for one model
+- `POST /synthesize`: generate speech from text
+- `GET /v1/models`: OpenAI-compatible model list
+- `GET /v1/models/{model_id}`: OpenAI-compatible model details
+- `POST /v1/audio/speech`: OpenAI-compatible speech generation
 
-### GET /models
-Returns a list of available TTS models
+### POST /v1/audio/speech
 
-### GET /languages
-Returns a list of supported languages
+This endpoint accepts the standard OpenAI request fields. `model` accepts a Zonos model ID or the aliases `tts-1`, `tts-1-hd`, and `gpt-4o-mini-tts`. `input` is the text to speak. `speed` ranges from 0.25 to 4.0 and scales the Zonos speaking rate. `voice` and `instructions` are accepted for compatibility but do not change the Zonos voice. `response_format` accepts `wav`, `pcm`, `mp3`, `opus`, `aac`, and `flac`. The compressed formats require `ffmpeg` on the server. Errors use the OpenAI `{"error": {...}}` shape.
 
-### GET /model/{model_name}/conditioners
-Returns available conditioners for a specific model
+```json
+{
+  "model": "tts-1",
+  "input": "Hello, this is a test.",
+  "voice": "alloy",
+  "response_format": "wav",
+  "speed": 1.0
+}
+```
 
 ### POST /synthesize
-Generate speech from text. Example request:
 
 ```json
 {
@@ -121,34 +136,22 @@ Generate speech from text. Example request:
 }
 ```
 
-## Environment Variables
-
-- `USE_GPU`: Set to "true" to enable GPU acceleration (default: true)
-- `PYTHONPATH`: Set to the application root directory
-
-## GPU Support
-
-The API uses NVIDIA GPU acceleration by default. Make sure you have:
-1. NVIDIA GPU with CUDA support
-2. NVIDIA drivers installed
-3. NVIDIA Container Toolkit installed and configured
+The response is a WAV stream with an `x-seed` header containing the seed used for generation. `model_choice` must match an entry from `/models`. Text longer than 2000 characters returns HTTP 400.
 
 ## Development
 
-### Prerequisites
-- Python 3.10+
-- NVIDIA GPU with CUDA support (recommended)
-- Docker and docker-compose (for containerized deployment)
+Install the test dependencies from `requirements.txt`, then run the tests.
 
-### Local Development
 ```bash
-# Start in development mode
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+pytest
+```
 
-# Or with docker-compose
-docker-compose up --build
+Start the server in development mode.
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the LICENSE file for details. 
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
