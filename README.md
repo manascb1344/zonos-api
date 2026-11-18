@@ -14,7 +14,7 @@ This service is built on the Zonos models created by [Zyphra](https://huggingfac
 - Docker and docker-compose support with NVIDIA GPU acceleration
 - Health check and structured logging
 - Swagger documentation at `/docs`
-- Voice cloning and audio continuation through `speaker_audio` and `prefix_audio`
+- Voice cloning and audio continuation through `speaker_audio` and `prefix_audio` files placed under `AUDIO_ROOT`
 - OpenAI-compatible `POST /v1/audio/speech` and model listing endpoints
 
 ## Quick Start
@@ -112,7 +112,7 @@ The response is `{"status":"ok"}`.
 
 ### POST /v1/audio/speech
 
-This endpoint accepts the standard OpenAI request fields. `model` accepts a Zonos model ID or the aliases `tts-1`, `tts-1-hd`, and `gpt-4o-mini-tts`. `input` is the text to speak. `speed` ranges from 0.25 to 4.0 and scales the Zonos speaking rate. `voice` and `instructions` are accepted for compatibility but do not change the Zonos voice. `response_format` accepts `wav`, `pcm`, `mp3`, `opus`, `aac`, and `flac`. The compressed formats require `ffmpeg` on the server. Errors use the OpenAI `{"error": {...}}` shape.
+This endpoint accepts the standard OpenAI request fields. `model` accepts a Zonos model ID or the aliases `tts-1`, `tts-1-hd`, and `gpt-4o-mini-tts`. `input` is the text to speak. `speed` ranges from 0.25 to 4.0 and scales the Zonos speaking rate. `voice` and `instructions` are accepted for compatibility but do not change the Zonos voice. `response_format` accepts `wav`, `pcm`, `mp3`, `opus`, `aac`, and `flac`. The compressed formats require `ffmpeg` on the server. PCM output is 24 kHz signed 16-bit little-endian, as OpenAI specifies. Errors use the OpenAI `{"error": {...}}` shape.
 
 ```json
 {
@@ -138,7 +138,7 @@ This endpoint accepts the standard OpenAI request fields. `model` accepts a Zono
 }
 ```
 
-The response is a WAV stream with an `x-seed` header containing the seed used for generation. `model_choice` must match an entry from `/models`. Text longer than 2000 characters returns HTTP 400.
+The response is a WAV stream with an `x-seed` header containing the seed used for generation. `model_choice` must match an entry from `/models`. Text longer than `MAX_CHARACTERS` (2000 by default) returns HTTP 400.
 
 ## Development
 
