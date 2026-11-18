@@ -2,11 +2,11 @@
 
 > Warning: this API is at version 0.1.0 and is unstable. Breaking changes may occur. Use it in production at your own risk.
 
-A FastAPI service for the Zonos text-to-speech model.
+A FastAPI service for Zonos text-to-speech with an OpenAI-compatible speech endpoint.
 
 ## Credits
 
-This API uses [Zonos-v0.1-hybrid](https://huggingface.co/Zyphra/Zonos-v0.1-hybrid) and [Zonos-v0.1-transformer](https://huggingface.co/Zyphra/Zonos-v0.1-transformer) models created by [Zyphra](https://huggingface.co/Zyphra). The models provide zero-shot voice cloning, more than 100 languages through eSpeak NG, 44 kHz audio output, and control over speaking rate, pitch, and emotion. This API currently serves the transformer variant. See the [model collection](https://huggingface.co/collections/Zyphra/zonos-v01-67ac661c85e1898670823b4f) and the [release blog post](https://www.zyphra.com/post/beta-release-of-zonos-v0-1) for details.
+This service is built on the Zonos models created by [Zyphra](https://huggingface.co/Zyphra). The models provide zero-shot voice cloning, more than 100 languages through eSpeak NG, 44 kHz audio output, and control over speaking rate, pitch, and emotion. This release serves the [Zonos-v0.1-transformer](https://huggingface.co/Zyphra/Zonos-v0.1-transformer) variant. The [hybrid variant](https://huggingface.co/Zyphra/Zonos-v0.1-hybrid) is not served because it needs a mamba backbone. See the [model collection](https://huggingface.co/collections/Zyphra/zonos-v01-67ac661c85e1898670823b4f) and the [release blog post](https://www.zyphra.com/post/beta-release-of-zonos-v0-1) for details.
 
 ## Features
 
@@ -30,6 +30,8 @@ docker run -d \
   -e CUDA_VISIBLE_DEVICES=0 \
   ghcr.io/manascb1344/zonos-api:latest
 ```
+
+CI publishes this image on pushes to `main`.
 
 ## Manual Installation
 
@@ -151,6 +153,10 @@ Start the server in development mode.
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for environment setup, coding conventions, and the pull request process.
 
 ## License
 
